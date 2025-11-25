@@ -58,17 +58,29 @@
   }
 
   function start(){
-  // reset world
-  world.score=0; world.lives=3;
-  hero.x=50; hero.y=300; hero.vy=0; hero.onGround=true;
-  world.coins=[]; world.spikes=[];
-  last = performance.now();
-  loop(); // NOTE: starts a new RAF chain (hidden bug)
+    // reset world
+    world.score = 0;
+    world.lives = 3;
+    hero.x = 50;
+    hero.y = 300;
+    hero.vy = 0;
+    hero.onGround = true;
+    world.coins = [];
+    world.spikes = [];
+    last = performance.now();
   }
   
-  window.addEventListener('keydown', e => { if (e.key.toLowerCase()==='r') start(); });
-  window.addEventListener('keydown', e => { if (e.key.toLowerCase()==='p') paused=!paused; }); 
+  window.addEventListener('keydown', e => {
+    if (e.key.toLowerCase() === 'r') start();
+  });
+
+  window.addEventListener('keydown', e => {
+    if (e.key.toLowerCase()==='p') paused=!paused; 
+  }); 
+
   window.addEventListener('keydown', e => keys.add(e.code==='Space'?'Space':e.key));
+
   window.addEventListener('keyup',   e => keys.delete(e.code==='Space'?'Space':e.key));
+
   loop();
 })();
