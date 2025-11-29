@@ -7,15 +7,46 @@
 
   const GROUND_Y = 300;
   const MAX_JUMP_HEIGHT = 80;
+
+  const SPIKE_W = 40;
+  const SPIKE_H = 40;
+
+  const HERO_FRAME_COUNT = 4;
+  const HERO_FRAME_DURATION = 0.1;
+  const HERO_FRAME_W = 32;
+  const HERO_FRAME_H = 32;
+  let heroFrame = 0;
+  let heroFrameTimer = 0;
+
   const COIN_MIN_Y = GROUND_Y - MAX_JUMP_HEIGHT;
   const COIN_MAX_Y = GROUND_Y;
+  const COIN_FRAME_COUNT = 6;
+  const COIN_FRAME_DURATION = 0.08;
+  const COIN_FRAME_W = 16;
+  const COIN_FRAME_H = 16;
+
+  let coinFrame = 0;
+  let coinFrameTimer = 0;
 
   const keys = new Set();
-  const hero = { x: 50, y: GROUND_Y, w: 32, h: 32, vy: 0, onGround: true };
-  const world = { score:0, lives:3, hero, coins:[], spikes:[] };
+  const hero = { x: 50, y: GROUND_Y, w: 40, h: 40, vy: 0, onGround: true };
+  const world = { score: 0, lives: 3, hero, coins: [], spikes: [] };
+
   let last = performance.now();
 
-  function spawn(){
+  const bgImg = new Image();
+  bgImg.src = "../assets/bg.jpg";
+
+  const heroSheet = new Image();
+  heroSheet.src = "../assets/hero.png";
+
+  const coinSheet = new Image();
+  coinSheet.src = "../assets/coin.png";
+
+  const spikeImg = new Image();
+  spikeImg.src = "../assets/spike.png";
+
+  function spawn() {
     if (Math.random() < 0.03) {
       const minY = 220;
       const maxY = 300;
@@ -23,40 +54,54 @@
       world.coins.push({
         x: canvas.width + 20,
         y: coinY,
-        w: 16,
-        h: 16
+        w: 24,
+        h: 24
       });
     }
-
     if (Math.random() < 0.02) {
-      world.spikes.push({ x: canvas.width + 10, y: 308, w: 24, h: 24 });
+      world.spikes.push({
+        x: canvas.width + 10,
+        y: GROUND_Y + hero.h - SPIKE_H,
+        w: SPIKE_W,
+        h: SPIKE_H
+      });
     }
   }
 
-
-
-  function aabb(a,b){ 
-    return !(a.x+a.w<b.x || b.x+b.w<a.x || a.y+a.h<b.y || b.y+b.h<a.y);
+  function aabb(a, b) {
+    return !(
+      a.x + a.w < b.x ||
+      b.x + b.w < a.x ||
+      a.y + a.h < b.y ||
+      b.y + b.h < a.y
+    );
   }
 
-  function update(dt){
+  function update(dt) {
     const speed = 220;
-    if (keys.has('ArrowRight')) hero.x += speed*dt;
-    if (keys.has('ArrowLeft'))  hero.x -= speed*dt;
-    if (keys.has('Space') && hero.onGround){ 
-      hero.vy = -380; hero.onGround = false; 
+    if (keys.has('ArrowRight')) hero.x += speed * dt;
+    if (keys.has('ArrowLeft'))  hero.x -= speed * dt;
+
+    if (keys.has('Space') && hero.onGround) {
+      hero.vy = -380;
+      hero.onGround = false;
     }
-    hero.vy += 900*dt;
-    hero.y += hero.vy*dt;
-    if (hero.y >= 300){
-      hero.y=300;
-      hero.vy=0;
-      hero.onGround=true; 
+
+    hero.vy += 900 * dt;
+    hero.y += hero.vy * dt;
+    if (hero.y >= GROUND_Y) {
+      hero.y = GROUND_Y;
+      hero.vy = 0;
+      hero.onGround = true;
     }
+
     spawn();
-    world.coins.forEach(c => c.x -= 200*dt);
-    world.spikes.forEach(s => s.x -= 220 * dt);
-    world.coins = world.coins.filter(c => !aabb(hero, c) ? true : (world.score++, false));
+    world.coins.forEach(c => (c.x -= 200 * dt));
+    world.spikes.forEach(s => (s.x -= 220 * dt));
+
+    world.coins = world.coins.filter(c =>
+      !aabb(hero, c) ? true : (world.score++, false)
+    );
 
     world.spikes = world.spikes.filter(s => {
       if (!aabb(hero, s)) return true;
@@ -72,31 +117,80 @@
       gameOver = true;
       paused = true;
     }
+
+    // --- sprite animations ---
+    heroFrameTimer += dt;
+    if (heroFrameTimer >= HERO_FRAME_DURATION) {
+      heroFrameTimer -= HERO_FRAME_DURATION;
+      heroFrame = (heroFrame + 1) % HERO_FRAME_COUNT;
+    }
+
+    coinFrameTimer += dt;
+    if (coinFrameTimer >= COIN_FRAME_DURATION) {
+      coinFrameTimer -= COIN_FRAME_DURATION;
+      coinFrame = (coinFrame + 1) % COIN_FRAME_COUNT;
+    }
   }
 
-  function draw(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle='#0c1230'; ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle='#2a3b66'; ctx.fillRect(0,332,canvas.width,4);
-    ctx.fillStyle='#7bd8ff'; ctx.fillRect(hero.x, hero.y, hero.w, hero.h);
-    ctx.fillStyle='#ffd84d'; world.coins.forEach(c => ctx.fillRect(c.x,c.y,c.w,c.h));
-    ctx.fillStyle='#ff6b6b'; world.spikes.forEach(s => ctx.fillRect(s.x,s.y,s.w,s.h));
-    document.getElementById('score').textContent = world.score;
-    document.getElementById('lives').textContent = world.lives;
+  function draw() {
+    // background
+    ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 
+    // ground
+    const groundY = GROUND_Y + hero.h; // 300 + 32 = 332
+    ctx.fillStyle = "#111";
+    ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+
+    // coins (animated)
+    world.coins.forEach(c => {
+      const sy = 0;
+      const sx = coinFrame * COIN_FRAME_W;
+      ctx.drawImage(
+        coinSheet,
+        sx, 0, COIN_FRAME_W, COIN_FRAME_H,   
+        c.x, c.y, c.w, c.h                   
+      );
+    });
+
+    // spikes
+    world.spikes.forEach(s => {
+      ctx.drawImage(spikeImg, s.x, s.y, s.w, s.h);
+    });
+
+    // hero (animated)
+    {
+      const sy = 0;
+      const sx = heroFrame * HERO_FRAME_W;
+      ctx.drawImage(
+        heroSheet,
+        sx, 0, HERO_FRAME_W, HERO_FRAME_H, 
+        hero.x, hero.y, hero.w, hero.h
+      );
+    }
+
+    // HUD
+    document.getElementById("score").textContent = world.score;
+    document.getElementById("lives").textContent = world.lives;
+
+    // game over overlay
     if (gameOver) {
-      ctx.fillStyle = '#000a';
+      ctx.fillStyle = "#000a";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#ffffff';
-      ctx.textAlign = 'center';
-      ctx.font = '20px system-ui';
-      ctx.fillText('Game Over - Press R to restart', canvas.width / 2, canvas.height / 2);
+      ctx.fillStyle = "#fff";
+      ctx.font = "20px system-ui";
+      ctx.textAlign = "center";
+      ctx.fillText(
+        "Game Over - Press R to restart",
+        canvas.width / 2,
+        canvas.height / 2
+      );
     }
   }
 
   let paused = false;
   let gameOver = false;
-  function loop(now = performance.now()){
+
+  function loop(now = performance.now()) {
     const dt = Math.min(0.033, (now - last) / 1000);
     last = now;
     if (!paused && !gameOver) update(dt);
@@ -104,12 +198,11 @@
     requestAnimationFrame(loop);
   }
 
-  function start(){
-    // reset world
+  function start() {
     world.score = 0;
     world.lives = 3;
     hero.x = 50;
-    hero.y = 300;
+    hero.y = GROUND_Y;
     hero.vy = 0;
     hero.onGround = true;
     world.coins = [];
@@ -117,43 +210,49 @@
     last = performance.now();
     paused = false;
     gameOver = false;
+    heroFrame = 0;
+    heroFrameTimer = 0;
+    coinFrame = 0;
+    coinFrameTimer = 0;
   }
-  
+
   window.addEventListener('keydown', e => {
     if (e.key.toLowerCase() === 'r') start();
   });
 
   window.addEventListener('keydown', e => {
-    if (e.key.toLowerCase() === 'p') paused=!paused; 
-  }); 
+    if (e.key.toLowerCase() === 'p') paused = !paused;
+  });
 
-  window.addEventListener('keydown', e => keys.add(e.code === 'Space' ? 'Space' : e.key));
-
-  window.addEventListener('keyup',   e => keys.delete(e.code === 'Space' ? 'Space' : e.key));
+  window.addEventListener('keydown', e =>
+    keys.add(e.code === 'Space' ? 'Space' : e.key)
+  );
+  window.addEventListener('keyup', e =>
+    keys.delete(e.code === 'Space' ? 'Space' : e.key)
+  );
 
   window.addEventListener('keydown', e => {
-      if(e.key === 'Escape' && helpModal.hidden == true){
-        helpModal.hidden = false;
-        if(!paused) paused = !paused;
-      }
-      else if(e.key === 'Escape' && helpModal.hidden == false){
-        helpModal.hidden = true;
-        if(paused) paused = !paused;
-      }
-    });
+    if (e.key === 'Escape' && helpModal.hidden === true) {
+      helpModal.hidden = false;
+      if (!paused) paused = !paused;
+    } else if (e.key === 'Escape' && helpModal.hidden === false) {
+      helpModal.hidden = true;
+      if (paused) paused = !paused;
+    }
+  });
 
   if (helpBtn && helpModal && closeHelp) {
     helpBtn.addEventListener('click', () => {
       helpModal.hidden = false;
-      if(!paused) paused = !paused;
+      if (!paused) paused = !paused;
     });
 
     closeHelp.addEventListener('click', () => {
       helpModal.hidden = true;
-      if(paused) paused = !paused;
+      if (paused) paused = !paused;
     });
 
-    helpModal.addEventListener('click', (e) => {
+    helpModal.addEventListener('click', e => {
       if (e.target === helpModal) {
         helpModal.hidden = true;
       }
@@ -161,5 +260,4 @@
   }
 
   loop();
-
 })();
